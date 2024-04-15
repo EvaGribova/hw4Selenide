@@ -1,57 +1,53 @@
 package ru.netology;
 
 import com.codeborne.selenide.Condition;
-import com.codeborne.selenide.SelenideElement;
-import com.codeborne.selenide.SetValueOptions;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Keys;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-import static com.codeborne.selenide.Condition.visible;
-import static com.codeborne.selenide.Selectors.byText;
+import static com.codeborne.selenide.Condition.*;
 import static com.codeborne.selenide.Selectors.withText;
 import static com.codeborne.selenide.Selenide.*;
-import static com.codeborne.selenide.files.DownloadActions.click;
-import static org.openqa.selenium.remote.tracing.EventAttribute.setValue;
-
 public class CardDeliveryTests {
+
+    String calcDate(int days, String format){
+        return LocalDate.now().plusDays(days).format(DateTimeFormatter.ofPattern(format, Locale.forLanguageTag("ru")));
+    }
+
+    @BeforeEach
+    void prepareForTest() {
+            open("http://localhost:9999/");
+        }
+
 
     @Test
     void positiveCardDeliveryTest() {
+        String date = calcDate(3, "dd.MM.yyyy");
 
-        LocalDate date = LocalDate.now().plusDays(3);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MM yyyy");
-        String text = date.format(formatter);
-
-        open("http://localhost:9999/");
         $("[data-test-id='city'] input").setValue("Москва");
         $("[data-test-id='date'] input").doubleClick().sendKeys(Keys.BACK_SPACE);
-        $("[data-test-id='date'] input").setValue(text);
+        $("[data-test-id='date'] input").setValue(date);
         $("[data-test-id='name'] input").setValue("Мария Иванова");
         $("[data-test-id='phone'] input").setValue("+79999999999");
         $("[data-test-id='agreement']").click();
-        $(".button.button").click();
-        $(withText("Встреча успешно забронирована")).shouldBe(visible, Duration.ofSeconds(15));
+        $(".button").click();
+        $("[data-test-id='notification'] .notification__content").shouldBe(visible, Duration.ofSeconds(15)).shouldHave(text("Встреча успешно забронирована на " + date));
     }
 
     @Test
     void findByTwoLettersInCityTest() {
         String city = "Москва";
-        LocalDate date = LocalDate.now().plusDays(3);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MM yyyy");
-        String text = date.format(formatter);
 
-        open("http://localhost:9999/");
         $("[data-test-id='city'] input").setValue("Мо");
         $$(".menu-item>.menu-item__control").find(Condition.text(city)).click();
         $("[data-test-id='date'] input").doubleClick().sendKeys(Keys.BACK_SPACE);
-        $("[data-test-id='date'] input").setValue(text);
+        $("[data-test-id='date'] input").setValue(calcDate(3, "dd MM yyyy"));
         $("[data-test-id='name'] input").setValue("Мария Иванова");
         $("[data-test-id='phone'] input").setValue("+79999999999");
         $("[data-test-id='agreement']").click();
@@ -62,42 +58,37 @@ public class CardDeliveryTests {
 
     @Test
     void emptyFormTest() {
-        open("http://localhost:9999/");
         $("button.button").click();
         $("[data-test-id='city'] .input__sub").shouldHave(Condition.text("Поле обязательно для заполнения"));
     }
 
     @Test
     void datePickerTest() {
-        open("http://localhost:9999/");
-        LocalDate date = LocalDate.now().plusDays(7);
-        String dayFormatter = date.format(DateTimeFormatter.ofPattern("dd"));
-        String monthYearFormatter = date.format(DateTimeFormatter.ofPattern("LLLL yyyy", Locale.forLanguageTag("ru")));
+
+        String monthYear = calcDate(7, "LLLL yyyy");
+        String day = calcDate(7, "dd");
+        String date = calcDate(7, "dd.MM.yyyy");
+
         $("[data-test-id='city'] input").setValue("Москва");
         $(".input__icon").click();
         String currentMonth = $(".calendar__name").text().toLowerCase();
-        if (!currentMonth.equals(monthYearFormatter)) {
+        if (!currentMonth.equals(monthYear)) {
             $("[data-step='1']").click();
         }
-        $$(".calendar__day").find(Condition.text(dayFormatter)).click();
+        $$(".calendar__day").find(Condition.text(day)).click();
         $("[data-test-id='name'] input").setValue("Мария Иванова");
         $("[data-test-id='phone'] input").setValue("+79999999999");
         $("[data-test-id='agreement']").click();
         $(".button.button").click();
-        $(withText("Встреча успешно забронирована")).shouldBe(visible, Duration.ofSeconds(15));
-        Assertions.assertEquals(date.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")), $("[data-test-id='date'] input").getValue());
+        $("[data-test-id='notification'] .notification__content").shouldBe(visible, Duration.ofSeconds(15)).shouldHave(text("Встреча успешно забронирована на " + date));
     }
 
     @Test
     void invalidCityTest() {
-        LocalDate date = LocalDate.now().plusDays(3);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MM yyyy");
-        String text = date.format(formatter);
 
-        open("http://localhost:9999/");
         $("[data-test-id='city'] input").setValue("Moscow");
         $("[data-test-id='date'] input").doubleClick().sendKeys(Keys.BACK_SPACE);
-        $("[data-test-id='date'] input").setValue(text);
+        $("[data-test-id='date'] input").setValue(calcDate(3, "dd MM yyyy"));
         $("[data-test-id='name'] input").setValue("Мария Иванова");
         $("[data-test-id='phone'] input").setValue("+79999999999");
         $("[data-test-id='agreement']").click();
@@ -107,14 +98,10 @@ public class CardDeliveryTests {
 
     @Test
     void invalidNameTest() {
-        LocalDate date = LocalDate.now().plusDays(3);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MM yyyy");
-        String text = date.format(formatter);
 
-        open("http://localhost:9999/");
         $("[data-test-id='city'] input").setValue("Москва");
         $("[data-test-id='date'] input").doubleClick().sendKeys(Keys.BACK_SPACE);
-        $("[data-test-id='date'] input").setValue(text);
+        $("[data-test-id='date'] input").setValue(calcDate(3, "dd MM yyyy"));
         $("[data-test-id='name'] input").setValue("Maria");
         $("[data-test-id='phone'] input").setValue("+79999999999");
         $("[data-test-id='agreement']").click();
@@ -124,14 +111,10 @@ public class CardDeliveryTests {
 
     @Test
     void invalidPhoneTest() {
-        LocalDate date = LocalDate.now().plusDays(3);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MM yyyy");
-        String text = date.format(formatter);
 
-        open("http://localhost:9999/");
         $("[data-test-id='city'] input").setValue("Москва");
         $("[data-test-id='date'] input").doubleClick().sendKeys(Keys.BACK_SPACE);
-        $("[data-test-id='date'] input").setValue(text);
+        $("[data-test-id='date'] input").setValue(calcDate(3, "dd MM yyyy"));
         $("[data-test-id='name'] input").setValue("Мария Иванова");
         $("[data-test-id='phone'] input").setValue("+799999999");
         $("[data-test-id='agreement']").click();
@@ -142,14 +125,10 @@ public class CardDeliveryTests {
 
     @Test
     void emptyAgreementTest() {
-        LocalDate date = LocalDate.now().plusDays(3);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MM yyyy");
-        String text = date.format(formatter);
 
-        open("http://localhost:9999/");
         $("[data-test-id='city'] input").setValue("Москва");
         $("[data-test-id='date'] input").doubleClick().sendKeys(Keys.BACK_SPACE);
-        $("[data-test-id='date'] input").setValue(text);
+        $("[data-test-id='date'] input").setValue(calcDate(3, "dd MM yyyy"));
         $("[data-test-id='name'] input").setValue("Мария Иванова");
         $("[data-test-id='phone'] input").setValue("+79999999999");
         $(".button.button").click();
